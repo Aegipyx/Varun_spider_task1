@@ -1,0 +1,31 @@
+pipeline {
+  agent any
+  stages {
+    stage('Lint & Test') {
+      steps {
+        sh 'cd frontend && npm install && npm run lint'
+        sh 'cd backend && cargo test'
+      }
+    }
+    stage('Build Docker Images') {
+      steps {
+        sh 'docker build -t yourusername/frontend ./frontend'
+        sh 'docker build -t yourusername/backend ./backend'
+      }
+    }
+    stage('Push to DockerHub') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+          sh 'echo $PASSWORD | docker login -u $USERNAME --password-stdin'
+          sh 'docker push yourusername/frontend'
+          sh 'docker push yourusername/backend'
+        }
+      }
+    }
+    stage('Deploy') {
+      steps {
+        sh 'ssh deploy@yourserver "cd app && docker compose pull && docker compose up -d"'
+      }
+    }
+  }
+}
